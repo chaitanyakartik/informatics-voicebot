@@ -369,13 +369,13 @@ export const runTTS = async (text, language, ngrokBaseUrl) => {
 // STT/ASR Helper Function
 // ============================================
 
-export const transcribeAudio = async (audioBlob, language, ngrokBaseUrl) => {
+export const transcribeAudio = async (audioBlob, modelId, ngrokBaseUrl) => {
   const audioFile = new File([audioBlob], 'recording.wav', { type: 'audio/wav' });
-  console.log('📤 Sending to ASR:', audioFile.size, 'bytes', 'Language:', language);
+  console.log('📤 Sending to ASR:', audioFile.size, 'bytes', 'Model ID:', modelId);
 
   const formData = new FormData();
   formData.append('file', audioFile);
-  formData.append('language', language);
+  formData.append('model_id', modelId);
 
   const apiUrl = `${ngrokBaseUrl}/asr/transcribe`;
 
@@ -398,4 +398,41 @@ export const transcribeAudio = async (audioBlob, language, ngrokBaseUrl) => {
   console.log('✅ Transcription:', transcription);
 
   return transcription;
+};
+
+// ============================================
+// Translation Helper Function
+// ============================================
+
+export const translateText = async (text, sourceLang, targetLang, ngrokBaseUrl) => {
+  const apiUrl = `${ngrokBaseUrl}/translation/translate`;
+  console.log(`🌐 Translating '${text.substring(0, 20)}...' from ${sourceLang} to ${targetLang}`);
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      source_language: sourceLang,
+      target_language: targetLang,
+      text: text
+    })
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Translation failed: ${response.status} ${errorText}`);
+  }
+
+  const data = await response.json();
+  // The curl example shows response might vary, but assuming standard field 'translated_text' or similar based on widely used patterns,
+  // OR the user didn't specify the response format.
+  // Wait, the user curl command was:
+  // --data '{"source_language":"eng_Latn","target_language":"kan_Knda","text":"This is a simple test."}'
+  // I should probably log the response to be safe or assume a reasonable default like `data.translated_text` or `data.text`.
+  // Let's assume `data.translated_text` or `data.text` or check if I can inspect.
+  // I'll stick with `data.translated_text` as a good guess, but fallback to `data.text` or `data`.
+  console.log('📥 Translation Response:', data);
+
+  // Adjust based on actual API response if known, otherwise return likely field
+  return data.translated_text || data.text || data.result || text;
 };

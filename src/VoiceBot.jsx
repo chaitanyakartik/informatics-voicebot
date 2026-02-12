@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic, Send, Settings, X, Loader2, StopCircle } from 'lucide-react';
 // import { GoogleGenerativeAI } from '@google/generative-ai'; // Removed client-side Gemini
-import { WAVRecorder, runTTS, calculateWAVDuration, transcribeAudio } from './audioServices';
+import { WAVRecorder, runTTS, calculateWAVDuration, transcribeAudio, translateText } from './audioServices';
 import { fixBytecodes } from './geminiUtils';
 
 // Chat Bubble Component
-const ChatBubble = ({ message, isUser }) => {
+const ChatBubble = ({ message, isUser, onTranslate }) => {
   const audioRef = useRef(null);
   const [audioError, setAudioError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -48,6 +48,33 @@ const ChatBubble = ({ message, isUser }) => {
       <div className={`max-w-[70%] px-4 py-2 rounded-2xl ${isUser ? 'bg-blue-500 text-white rounded-br-none' : 'bg-gray-200 text-gray-800 rounded-bl-none'
         }`}>
         <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+
+        {/* Translation Buttons */}
+        {!isUser && (
+          <div className="flex gap-2 mt-2">
+            <button
+              onClick={() => onTranslate(message, 'eng_Latn')}
+              className="text-[10px] px-2 py-0.5 bg-gray-300 hover:bg-gray-400 rounded text-gray-700"
+              title="Translate to English"
+            >
+              EN
+            </button>
+            <button
+              onClick={() => onTranslate(message, 'hin_Deva')}
+              className="text-[10px] px-2 py-0.5 bg-gray-300 hover:bg-gray-400 rounded text-gray-700"
+              title="Translate to Hindi"
+            >
+              HI
+            </button>
+            <button
+              onClick={() => onTranslate(message, 'kan_Knda')}
+              className="text-[10px] px-2 py-0.5 bg-gray-300 hover:bg-gray-400 rounded text-gray-700"
+              title="Translate to Kannada"
+            >
+              KA
+            </button>
+          </div>
+        )}
 
         {/* Audio player for bot messages */}
         {!isUser && message.audioUrl && (
@@ -340,7 +367,15 @@ const VoiceBot = () => {
 
     try {
       const ngrokBaseUrl = import.meta.env.VITE_NGROK_BASE_URL || 'http://localhost:8001';
-      const transcription = await transcribeAudio(audioBlob, selectedLanguage, ngrokBaseUrl);
+
+      // Map language name to model_id
+      const modelMap = {
+        'english': 'en',
+        'kannada': 'ka'
+      };
+      const modelId = modelMap[selectedLanguage] || 'en';
+
+      const transcription = await transcribeAudio(audioBlob, modelId, ngrokBaseUrl);
 
       setMessages(prev => [...prev, {
         text: transcription,
@@ -468,6 +503,79 @@ const VoiceBot = () => {
     };
   };
 
+  const handleTranslate = async (message, targetLangCode) => {
+    if (processingStage !== '') return; // Prevent concurrent actions
+    setIsProcessing(true);
+    setProcessingStage('transcribing'); // Reusing this stage name for translation processing
+
+    try {
+      const ngrokBaseUrl = import.meta.env.VITE_NGROK_BASE_URL || 'http://localhost:8001';
+
+      // Determine source language (default to English if not set)
+      const sourceLang = message.language || 'eng_Latn';
+
+      if (sourceLang === targetLangCode) {
+        console.log('⚠️ Source and target languages are the same.');
+        setIsProcessing(false);
+        setProcessingStage('');
+        return;
+      }
+
+      // 1. Translate Text
+      const translatedText = await translateText(message.text, sourceLang, targetLangCode, ngrokBaseUrl);
+
+      // Map API lang code to TTS readable language name
+      const ttsLangMap = {
+        'eng_Latn': 'english',
+        'hin_Deva': 'hindi',
+        'kan_Knda': 'kannada'
+      };
+      const ttsLang = ttsLangMap[targetLangCode] || 'english';
+
+      // 2. Add Translated Message
+      const messageId = Date.now();
+      const newMessage = {
+        text: translatedText,
+        source_reference: `Translated from ${sourceLang}`,
+        isUser: false,
+        timestamp: messageId,
+        audioUrl: null,
+        language: targetLangCode
+      };
+      setMessages(prev => [...prev, newMessage]);
+
+      // 3. Generate TTS for Translated Text
+      if (settings.useTTS) {
+        setProcessingStage('tts');
+        const { audio, errors } = await runTTS(translatedText, ttsLang, ngrokBaseUrl);
+
+        if (audio) {
+          const blob = new Blob([audio], { type: 'audio/wav' });
+          const audioUrl = URL.createObjectURL(blob);
+          audioBlobsRef.current.set(messageId, audioUrl);
+
+          // Attach audio after delay
+          setTimeout(() => {
+            setMessages(prev => prev.map(msg =>
+              msg.timestamp === messageId
+                ? { ...msg, audioUrl }
+                : msg
+            ));
+          }, 500);
+        } else {
+          console.error('❌ TTS failed for translation:', errors);
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Translation error:', error);
+      alert(`Translation failed: ${error.message}`);
+    } finally {
+      setIsProcessing(false);
+      setProcessingStage('');
+    }
+  };
+
   const handleLLMResponse = async (userText) => {
     try {
       const { answer, source_reference } = await callLLM(userText);
@@ -479,7 +587,8 @@ const VoiceBot = () => {
         source_reference,
         isUser: false,
         timestamp: messageId,
-        audioUrl: null
+        audioUrl: null,
+        language: selectedLanguage === 'english' ? 'eng_Latn' : selectedLanguage === 'kannada' ? 'kan_Knda' : 'hin_Deva'
       };
       setMessages(prev => [...prev, newMessage]);
 
@@ -583,7 +692,6 @@ const VoiceBot = () => {
             className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer font-medium text-gray-700"
           >
             <option value="english">🇬🇧 English</option>
-            <option value="hindi">🇮🇳 हिन्दी</option>
             <option value="kannada">🇮🇳 ಕನ್ನಡ</option>
           </select>
 
@@ -626,7 +734,12 @@ const VoiceBot = () => {
         )}
 
         {messages.map((msg, idx) => (
-          <ChatBubble key={`${msg.timestamp}-${idx}`} message={msg} isUser={msg.isUser} />
+          <ChatBubble
+            key={`${msg.timestamp}-${idx}`}
+            message={msg}
+            isUser={msg.isUser}
+            onTranslate={handleTranslate}
+          />
         ))}
 
         {isProcessing && (
