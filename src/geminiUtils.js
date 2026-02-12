@@ -45,15 +45,16 @@ If the required information is NOT present in the provided documents, respond as
 `;
 
 // Bytecode to Kannada character mappings
+// Bytecode to Kannada character mappings
 export const BYTECODE_MAP = {
-    '<0xE0><0xB2><0x94>': 'ಔ',
-    '<0xE0><0xB2><0x8A>': 'ಊ',
-    '<0xE0><0xB2><0x8E>': 'ಎ',
-    '<0xE0><0xB2><0x90>': 'ಐ',
-    '<0xE0><0xB2><0xA2>': 'ಢ',
-    '<0xE0><0xB2><0x9D>': 'ಝ',
-    '<0xE0><0xB2><0x8B>': 'ಋ',
-    '<0x2E>': '.',
+  '<0xE0><0xB2><0x94>': 'ಔ',  // Kannada letter AU
+  '<0xE0><0xB2><0x8A>': 'ಊ',  // Kannada letter UU
+  '<0xE0><0xB2><0x8E>': 'ಎ',  // Kannada letter E
+  '<0xE0><0xB2><0x90>': 'ಐ',  // Kannada letter AI
+  '<0xE0><0xB2><0xA2>': 'ಢ',  // Kannada letter DDHA
+  '<0xE0><0xB2><0x9D>': 'ಝ',  // Kannada letter JHA
+  '<0xE0><0xB2><0x8B>': 'ಋ',  // Kannada letter VOCALIC R
+  '<0x2E>': '.',  // Period/Full stop
 };
 
 /**
@@ -62,9 +63,10 @@ export const BYTECODE_MAP = {
  * @returns {string} - The cleaned text with proper characters
  */
 export const fixBytecodes = (text) => {
-    let corrected = text;
-    for (const [bytecode, kannadaChar] of Object.entries(BYTECODE_MAP)) {
-        corrected = corrected.replaceAll(bytecode, kannadaChar);
-    }
-    return corrected;
+  let corrected = text;
+  for (const [bytecode, kannadaChar] of Object.entries(BYTECODE_MAP)) {
+    // Create a global regex to replace all instances, similar to python's replace for strings
+    corrected = corrected.split(bytecode).join(kannadaChar);
+  }
+  return corrected;
 };
