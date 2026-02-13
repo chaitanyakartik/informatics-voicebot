@@ -301,7 +301,7 @@ const VoiceBot = () => {
         const response = await fetch(`${settings.backendUrl}/infomatics_bot/generate_response`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, chat_history: chatHistory })
+          body: JSON.stringify({ message: text, chat_history: chatHistory, metadata: { language: "None" } })
         });
 
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
