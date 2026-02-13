@@ -32,6 +32,7 @@ const Header = ({ actions }) => {
         { name: t.pages.stt, path: '/stt', icon: <Mic size={16} /> },
         { name: t.pages.tts, path: '/tts', icon: <FileText size={16} /> },
         { name: t.pages.ocr, path: '/ocr', icon: <ImageIcon size={16} /> },
+        { name: t.pages.ocrInplace, path: '/ocr-inplace', icon: <ImageIcon size={16} /> },
         { name: t.pages.translation, path: '/translation', icon: <Languages size={16} /> },
     ];
 
@@ -49,12 +50,9 @@ const Header = ({ actions }) => {
             {/* Right Side: Controls and Navigation */}
             <div className="flex items-center gap-4">
                 {/* Powered By CEG */}
-                <div className="flex flex-col items-end mr-2 hidden lg:flex opacity-80">
+                <div className="flex flex-col items-center mr-2 hidden lg:flex opacity-80">
                     <span className="text-[9px] uppercase tracking-widest text-slate-500 leading-none mb-1">Powered By</span>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-semibold text-slate-400">Centre for e-Governance</span>
-                        <img src={cegLogo} alt="Centre for e-Governance" className="h-8 w-auto grayscale contrast-125 brightness-150" />
-                    </div>
+                    <img src={cegLogo} alt="Centre for e-Governance" className="h-8 w-auto grayscale contrast-125 brightness-150" />
                 </div>
                 <div className="h-8 w-[1px] bg-white/10 hidden lg:block mr-2"></div>
 

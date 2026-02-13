@@ -47,6 +47,7 @@ export const AppProvider = ({ children }) => {
                 stt: "Speech to Text",
                 tts: "Text to Speech",
                 ocr: "OCR",
+                ocrInplace: "OCR Inplace",
                 translation: "Translation"
             }
         },
@@ -66,6 +67,7 @@ export const AppProvider = ({ children }) => {
                 stt: "ಮಾತು ಪಠ್ಯಕ್ಕೆ",
                 tts: "ಪಠ್ಯ ಧ್ವನಿಗೆ",
                 ocr: "ಒಸಿಆರ್",
+                ocrInplace: "ಚಿತ್ರದಲ್ಲಿನ ಪಠ್ಯ",
                 translation: "ಅನುವಾದ"
             }
         }
