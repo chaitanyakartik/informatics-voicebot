@@ -9,6 +9,34 @@ import cegLogo from './assets/ceg_logo.png';
 const audioStore = new Map(); // messageId -> { blob, url }
 
 // Chat Bubble Component
+// UI Translation Dictionary
+const uiTranslations = {
+  english: {
+    title: "Karnataka AI Voice Assistant",
+    welcomeTitle: "How can I help you today?",
+    welcomeText: "Tap the orb below to ask about government schemes, services, or general information.",
+    tapToSpeak: "Tap to Speak",
+    startTyping: "Type a message...",
+    send: "Send",
+    listening: "Listening...",
+    transcribing: "Transcribing...",
+    thinking: "Thinking...",
+    speaking: "Speaking..."
+  },
+  kannada: {
+    title: "ಕರ್ನಾಟಕ AI ಧ್ವನಿ ಸಹಾಯಕ",
+    welcomeTitle: "ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ?",
+    welcomeText: "ಸರ್ಕಾರಿ ಯೋಜನೆಗಳು, ಸೇವೆಗಳು ಅಥವಾ ಸಾಮಾನ್ಯ ಮಾಹಿತಿಯ ಬಗ್ಗೆ ಕೇಳಲು ಕೆಳಗಿನ ಗೋಳವನ್ನು ಸ್ಪರ್ಶಿಸಿ.",
+    tapToSpeak: "ಮಾತನಾಡಲು ಸ್ಪರ್ಶಿಸಿ",
+    startTyping: "ಸಂದೇಶವನ್ನು ಟೈಪ್ ಮಾಡಿ...",
+    send: "ಕಳುಹಿಸಿ",
+    listening: "ಆಲಿಸಲಾಗುತ್ತಿದೆ...",
+    transcribing: "ಲಿಪ್ಯಂತರ ಮಾಡಲಾಗುತ್ತಿದೆ...",
+    thinking: "ಯೋಚಿಸಲಾಗುತ್ತಿದೆ...",
+    speaking: "ಮಾತನಾಡಲಾಗುತ್ತಿದೆ..."
+  }
+};
+
 const ChatBubble = ({ message, isUser, onTranslate }) => {
   const audioRef = useRef(null);
   const [audioError, setAudioError] = useState(false);
@@ -454,15 +482,23 @@ const VoiceBot = () => {
           finalAnswer = finalAnswer.replace(/```json\n?/g, '').replace(/```/g, '').trim();
         }
 
-        if (typeof finalAnswer === 'string' && finalAnswer.trim().startsWith('{')) {
-          try {
-            const parsed = JSON.parse(finalAnswer);
-            if (parsed.answer) {
-              finalAnswer = parsed.answer;
-              finalSource = parsed.source_reference || finalSource;
+        if (typeof finalAnswer === 'string') {
+          // Robust JSON extraction: Find first '{' and last '}'
+          const firstBrace = finalAnswer.indexOf('{');
+          const lastBrace = finalAnswer.lastIndexOf('}');
+
+          if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+            const potentialJson = finalAnswer.substring(firstBrace, lastBrace + 1);
+            try {
+              const parsed = JSON.parse(potentialJson);
+              if (parsed.answer) {
+                finalAnswer = parsed.answer;
+                finalSource = parsed.source_reference || finalSource;
+                console.log('✅ Successfully extracted JSON from mixed text');
+              }
+            } catch (e) {
+              console.warn('⚠️ Found braces but failed to parse JSON, using raw text', e);
             }
-          } catch (e) {
-            console.warn('⚠️ Parse warning: answer looked like JSON but failed to parse', e);
           }
         }
 
@@ -522,10 +558,17 @@ const VoiceBot = () => {
       };
       const ttsLang = ttsLangMap[targetLangCode] || 'english';
 
+      const langNameMap = {
+        'eng_Latn': 'English',
+        'hin_Deva': 'Hindi',
+        'kan_Knda': 'Kannada'
+      };
+      const sourceLangName = langNameMap[sourceLang] || sourceLang;
+
       const messageId = Date.now();
       const newMessage = {
         text: translatedText,
-        source_reference: `Translated from ${sourceLang}`,
+        source_reference: `Translated from ${sourceLangName}`,
         isUser: false,
         timestamp: messageId,
         audioUrl: null,
@@ -647,11 +690,12 @@ const VoiceBot = () => {
   };
 
   const getStatusText = () => {
-    if (isRecording) return 'Listening...';
-    if (processingStage === 'transcribing') return 'Transcribing...';
-    if (processingStage === 'llm') return 'Thinking...';
-    if (processingStage === 'tts') return 'Speaking...';
-    return 'Tap to Speak';
+    const t = uiTranslations[selectedLanguage] || uiTranslations.english;
+    if (isRecording) return t.listening;
+    if (processingStage === 'transcribing') return t.transcribing;
+    if (processingStage === 'llm') return t.thinking;
+    if (processingStage === 'tts') return t.speaking;
+    return t.tapToSpeak;
   };
 
   return (
@@ -664,9 +708,11 @@ const VoiceBot = () => {
       {/* Header */}
       <div className="fixed top-0 w-full z-50 backdrop-blur-md border-b border-white/5 bg-[#020617]/50 h-20 flex items-center justify-between px-6 lg:px-12">
         <div className="flex items-center gap-4">
-          <img src={gokLogo} alt="Government of Karnataka" className="h-10 w-auto object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
+          <img src={gokLogo} alt="Government of Karnataka" className="h-14 w-auto object-contain drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" />
           <div className="h-8 w-[1px] bg-white/10 hidden md:block"></div>
-          <h1 className="text-xl font-semibold tracking-tight text-white hidden md:block">Karnataka AI Voice Assistant</h1>
+          <h1 className="text-xl font-semibold tracking-tight text-white hidden md:block">
+            {uiTranslations[selectedLanguage]?.title || uiTranslations.english.title}
+          </h1>
         </div>
 
         <div className="flex items-center gap-4">
@@ -724,10 +770,10 @@ const VoiceBot = () => {
                 <Mic size={40} className="text-blue-400" />
               </div>
               <h2 className="text-3xl md:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-200 via-white to-purple-200">
-                How can I help you today?
+                {uiTranslations[selectedLanguage]?.welcomeTitle || uiTranslations.english.welcomeTitle}
               </h2>
               <p className="text-slate-400 max-w-md">
-                Tap the orb below to ask about government schemes, services, or general information.
+                {uiTranslations[selectedLanguage]?.welcomeText || uiTranslations.english.welcomeText}
               </p>
             </div>
           )}
@@ -769,7 +815,7 @@ const VoiceBot = () => {
               onChange={(e) => setTextInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendText()}
               disabled={isProcessing || isRecording}
-              placeholder="Type a message..."
+              placeholder={uiTranslations[selectedLanguage]?.startTyping || uiTranslations.english.startTyping}
               className="flex-1 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-40"
             />
             <button
@@ -777,7 +823,7 @@ const VoiceBot = () => {
               disabled={isProcessing || isRecording || !textInput.trim()}
               className="px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm transition-colors"
             >
-              Send
+              {uiTranslations[selectedLanguage]?.send || uiTranslations.english.send}
             </button>
           </div>
 
@@ -793,7 +839,9 @@ const VoiceBot = () => {
               <span className="text-blue-300 text-sm font-medium tracking-wide animate-pulse">{getStatusText()}</span>
             )}
             {!isRecording && !isProcessing && (
-              <span className="text-slate-500 text-sm font-medium tracking-wide opacity-0 transition-opacity duration-700 delay-500" style={{ opacity: 1 }}>Tap to Speak</span>
+              <span className="text-slate-500 text-sm font-medium tracking-wide opacity-0 transition-opacity duration-700 delay-500" style={{ opacity: 1 }}>
+                {uiTranslations[selectedLanguage]?.tapToSpeak || uiTranslations.english.tapToSpeak}
+              </span>
             )}
           </div>
 
@@ -805,18 +853,21 @@ const VoiceBot = () => {
             )}
 
             {/* Spinning Ring when processing */}
+            {/* Spinning Ring when processing */}
             {isProcessing && (
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-full border-[3px] border-transparent border-t-blue-400 border-r-purple-400 animate-spin"></div>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                <div className="w-28 h-28 rounded-full border-[3px] border-transparent border-t-blue-400 border-r-purple-400 animate-spin"></div>
+              </div>
             )}
 
             {/* Button Itself */}
             <button
               onClick={toggleRecording}
               disabled={isProcessing}
-              className={`relative w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 transform ${isRecording
+              className={`relative w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 transform ${isRecording
                 ? 'bg-red-500 shadow-[0_0_50px_rgba(239,68,68,0.6)] scale-110'
                 : isProcessing
-                  ? 'bg-[#0f172a] shadow-[0_0_30px_rgba(37,99,235,0.2)] scale-95 cursor-wait'
+                  ? 'bg-[#0f172a] shadow-none border border-white/10 scale-95 cursor-wait'
                   : 'bg-gradient-to-br from-blue-600 to-indigo-700 shadow-[0_0_40px_rgba(79,70,229,0.5)] hover:shadow-[0_0_70px_rgba(79,70,229,0.7)] hover:scale-105'
                 }`}
             >
@@ -843,7 +894,7 @@ const VoiceBot = () => {
         <div className="absolute bottom-4 right-6 z-50 pointer-events-auto flex flex-col items-end opacity-60 hover:opacity-100 transition-opacity">
           <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Powered By</p>
           <div className="flex items-center gap-2">
-            <img src={cegLogo} alt="Centre for e-Governance" className="h-6 w-auto grayscale contrast-125 brightness-150" />
+            <img src={cegLogo} alt="Centre for e-Governance" className="h-12 w-auto grayscale contrast-125 brightness-150" />
             <div className="w-[1px] h-5 bg-slate-700"></div>
             <span className="text-xs font-semibold text-slate-400">Centre for e-Governance</span>
           </div>

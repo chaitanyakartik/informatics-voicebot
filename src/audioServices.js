@@ -242,10 +242,26 @@ export const runTTS = async (text, language, ngrokBaseUrl) => {
     return { audio: null, errors: ['Empty text'] };
   }
 
-  const chunkSize = 150; // Slightly larger chunks for better sentence flow
-  const apiUrl = `${ngrokBaseUrl}/tts/tts/tts`;
+  // Language Detection: Check for English vs Indic script mix
+  // We determine if the text is predominantly English (Latin script) or Indic (Devanagari/Kannada).
+  // This handles cases where a stray character might appear in an otherwise English sentence.
+  const englishMatches = text.match(/[a-zA-Z]/g) || [];
+  const indicMatches = text.match(/[\u0900-\u097F\u0C80-\u0CFF]/g) || [];
 
-  console.log('🔊 TTS Endpoint:', apiUrl, 'Language:', language);
+  const englishCount = englishMatches.length;
+  const indicCount = indicMatches.length;
+  const totalScriptChars = englishCount + indicCount;
+
+  // Default to English if no script characters (e.g., numbers/symbols), otherwise check ratio > 95%
+  const isEnglish = totalScriptChars === 0 || (englishCount / totalScriptChars) > 0.95;
+
+  const chunkSize = 150;
+  // Select endpoint based on detected language
+  const apiUrl = isEnglish
+    ? `${ngrokBaseUrl}/tts_eng/tts`
+    : `${ngrokBaseUrl}/tts/tts/tts`;
+
+  console.log(`🔊 TTS Endpoint: ${apiUrl} | English Ratio: ${(totalScriptChars ? (englishCount / totalScriptChars).toFixed(2) : 'N/A')} | Is English: ${isEnglish}`);
 
   // Split into chunks based on punctuation for better cadence
   const parts = text.replace(/([.?!])\s*(?=[A-Z])/g, "$1|").split("|");
@@ -272,19 +288,38 @@ export const runTTS = async (text, language, ngrokBaseUrl) => {
   // Helper to fetch keys
   const callTTS = async (index, chunk) => {
     try {
+      const body = isEnglish
+        ? JSON.stringify({
+          text: chunk,
+          description: "Mary speaks slowly with a high pitch and expressive tone. The recording is clear, showcasing her energetic and emotive voice."
+        })
+        : JSON.stringify({ text: chunk });
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: chunk })
+        body
       });
 
       if (!response.ok) {
         return { index, audio: null, error: `${response.status}` };
       }
 
-      const data = await response.json();
-      const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
-      return { index, audio: audioBytes, error: null };
+      // Handle different response formats based on endpoint
+      if (isEnglish) {
+        // English endpoint returns binary WAV directly
+        const arrayBuffer = await response.arrayBuffer();
+        return { index, audio: new Uint8Array(arrayBuffer), error: null };
+      } else {
+        // Generic endpoint returns JSON with base64 audio
+        const data = await response.json();
+        if (data.audio_base64) {
+          const audioBytes = Uint8Array.from(atob(data.audio_base64), c => c.charCodeAt(0));
+          return { index, audio: audioBytes, error: null };
+        }
+        return { index, audio: null, error: 'Invalid JSON response' };
+      }
+
     } catch (err) {
       return { index, audio: null, error: err.message };
     }
