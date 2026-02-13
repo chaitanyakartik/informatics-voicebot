@@ -1,7 +1,7 @@
 
 // Sarvam API Helper Functions
 
-const SARVAM_API_KEY = import.meta.env.SARVAM_API_KEY;
+const SARVAM_API_KEY = import.meta.env.VITE_SARVAM_API_KEY;
 
 // Map application language codes to Sarvam language codes
 const LANGUAGE_MAP = {
