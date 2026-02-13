@@ -3,7 +3,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-    const [selectedLanguage, setSelectedLanguage] = useState('english');
+    const [selectedLanguage, setSelectedLanguage] = useState('kannada');
     const [settings, setSettings] = useState({
         useTTS: true,
         backendUrl: import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'

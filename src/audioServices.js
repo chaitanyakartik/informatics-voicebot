@@ -1,3 +1,5 @@
+import { sarvamTTS, sarvamSTT } from './sarvamHelper';
+
 // ============================================
 // WAV Audio Recorder Helper Class (STT)
 // ============================================
@@ -238,6 +240,8 @@ export const calculateWAVDuration = (audioBytes) => {
 
 // TTS function with chunking and concurrent processing
 export const runTTS = async (text, language, ngrokBaseUrl) => {
+  // --- EXISTING CODE COMMENTED OUT FOR SARVAM INTEGRATION ---
+  /*
   if (!text.trim()) {
     return { audio: null, errors: ['Empty text'] };
   }
@@ -398,6 +402,33 @@ export const runTTS = async (text, language, ngrokBaseUrl) => {
 
   console.log('✅ Stitched Final WAV:', final.length, 'bytes');
   return { audio: final, errors };
+  */
+  // --- END EXISTING CODE ---
+
+  // --- SARVAM INTEGRATION ---
+  try {
+    console.log(`🔊 calling Sarvam TTS for: "${text.substring(0, 20)}..." in ${language}`);
+    const audioBlob = await sarvamTTS(text, language);
+    // Convert Blob back to Uint8Array for existing contract if needed, 
+    // but the caller (VoiceBot) handles Blobs too. 
+    // Wait, runTTS contract returns { audio: Uint8Array, errors }.
+
+    // VoiceBot.jsx does: const blob = new Blob([audio], { type: 'audio/wav' });
+    // So if audio is already a blob, this might double wrap or fail.
+    // Let's check: 
+    // VoiceBot.jsx: const { audio } = await runTTS...
+    //               const blob = new Blob([audio], ...);
+
+    // So 'audio' should be something 'new Blob([audio])' accepts.
+    // If I return a Blob, 'new Blob([blob])' works fine.
+
+    // However, it's safer to stick to return type contracts.
+    // sarvamTTS returns a Blob.
+
+    return { audio: audioBlob, errors: [] };
+  } catch (e) {
+    return { audio: null, errors: [e.message] };
+  }
 };
 
 // ============================================
@@ -405,6 +436,8 @@ export const runTTS = async (text, language, ngrokBaseUrl) => {
 // ============================================
 
 export const transcribeAudio = async (audioBlob, modelId, ngrokBaseUrl) => {
+  // --- EXISTING CODE COMMENTED OUT FOR SARVAM INTEGRATION ---
+  /*
   const audioFile = new File([audioBlob], 'recording.wav', { type: 'audio/wav' });
   console.log('📤 Sending to ASR:', audioFile.size, 'bytes', 'Model ID:', modelId);
 
@@ -433,6 +466,19 @@ export const transcribeAudio = async (audioBlob, modelId, ngrokBaseUrl) => {
   console.log('✅ Transcription:', transcription);
 
   return transcription;
+  */
+  // --- END EXISTING CODE ---
+
+  // --- SARVAM INTEGRATION ---
+  console.log('📤 Sending to Sarvam STT. Model:', modelId);
+  try {
+    const transcription = await sarvamSTT(audioBlob, modelId);
+    console.log('✅ Sarvam Transcription:', transcription);
+    return transcription;
+  } catch (error) {
+    console.error('Sarvam ASR Failed:', error);
+    throw error;
+  }
 };
 
 // ============================================

@@ -104,12 +104,7 @@ const ChatBubble = ({ message, isUser, onTranslate }) => {
           </span>
         </div>
 
-        {/* Source Reference */}
-        {!isUser && message.source_reference && message.source_reference !== 'N/A' && (
-          <div className="mt-2 pt-2 border-t border-white/10 text-xs text-blue-300/70 italic flex gap-1">
-            <span>Source:</span> <span className="text-blue-300">{message.source_reference}</span>
-          </div>
-        )}
+
       </div>
     </div>
   );
@@ -306,7 +301,7 @@ const VoiceBot = () => {
         const response = await fetch(`${settings.backendUrl}/infomatics_bot/generate_response`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: text, chat_history: chatHistory, metadata: { language: selectedLanguage } })
+          body: JSON.stringify({ message: text, chat_history: chatHistory })
         });
 
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
