@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Mic, Settings, Loader2, Download, RotateCcw } from 'lucide-react';
+import { Mic, Loader2, Download, RotateCcw } from 'lucide-react';
 import { WAVRecorder, runTTS, calculateWAVDuration, transcribeAudio, translateText } from './audioServices';
 import { fixBytecodes } from './geminiUtils';
 import { useAppContext } from './context/AppContext';
 import Header from './components/Header';
-import SettingsModal from './components/SettingsModal';
+
 
 // Global audio store to prevent GC and survive re-renders
 const audioStore = new Map(); // messageId -> { blob, url }
@@ -118,7 +118,7 @@ const VoiceBot = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStage, setProcessingStage] = useState(''); // 'transcribing', 'llm', 'tts'
   const [textInput, setTextInput] = useState('');
-  const [settingsOpen, setSettingsOpen] = useState(false);
+
   const [recordingTime, setRecordingTime] = useState(0);
   const [chatHistory, setChatHistory] = useState([]); // Store backend chat context
 
@@ -452,22 +452,12 @@ const VoiceBot = () => {
               <RotateCcw size={20} />
             </button>
 
-            <button
-              onClick={() => setSettingsOpen(true)}
-              className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-300"
-            >
-              <Settings size={20} />
-            </button>
+
           </>
         }
       />
 
-      <SettingsModal
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        settings={settings}
-        onSettingsChange={setSettings}
-      />
+
 
       {/* Chat Container */}
       <div
